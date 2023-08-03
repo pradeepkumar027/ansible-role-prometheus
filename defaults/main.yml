@@ -1,0 +1,18 @@
+---
+# defaults file for prometheus
+prometheus_directories:
+- /var/lib/prometheus
+- /etc/prometheus/rules
+- /etc/prometheus/rules.d
+- /etc/prometheus/files_sd
+- /tmp/prometheus
+prometheus_version: "2.37.8"
+prometheus_installation_package_url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+prometheus_executables:
+- prometheus
+- promtool
+prometheus_configuration_files:
+- consoles
+- console_libraries
+prometheus_targets: []
+firewalld_enabled: false

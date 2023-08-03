@@ -1,0 +1,81 @@
+---
+# tasks file for prometheus
+- name: create group prometheus
+  group:
+    name: prometheus
+    state: present
+- name: create user prometheus under prometheus group
+  user:
+    name: prometheus
+    group: prometheus
+    shell: /sbin/nologin
+    state: present
+- name: create required directories for prometheus
+  file:
+    path: "{{ item }}"
+    owner: prometheus
+    group: prometheus
+    state: directory
+  loop: "{{ prometheus_directories }}"
+- name: check whether prometheus executables already exists
+  stat:
+    path: /usr/local/bin/prometheus
+  register: prometheus_executables_stat
+- name: download and unarchive prometheus installation files
+  unarchive:
+    src: "{{ prometheus_installation_package_url }}"
+    dest: /tmp/prometheus
+    remote_src: true
+  when: not prometheus_executables_stat.stat.exists
+- name: copy prometheus executables to /usr/local/bin
+  copy:
+    src: "/tmp/prometheus/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+    dest: /usr/local/bin
+    owner: prometheus
+    group: prometheus
+    mode: 0555
+    remote_src: true
+  loop: "{{ prometheus_executables }}"
+  when: not prometheus_executables_stat.stat.exists
+- name: copy prometheus configuration files and directories to /etc/prometheus
+  copy:
+    src: "/tmp/prometheus/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+    dest: /etc/prometheus
+    owner: prometheus
+    group: prometheus
+    remote_src: true
+  loop: "{{ prometheus_configuration_files }}"
+  when: not prometheus_executables_stat.stat.exists
+- name: setup and configure prometheus.yml from j2 template
+  template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    owner: prometheus
+    group: prometheus
+  notify: restart prometheus
+- name: setup prometheus service
+  copy:
+    src: prometheus.service
+    dest: /etc/systemd/system/prometheus.service
+    owner: prometheus
+    group: prometheus
+- name: check prometheus configuration is valid
+  command: /usr/local/bin/promtool check config /etc/prometheus/prometheus.yml
+  register: prometheus_config
+- name: start and enable prometheus
+  service:
+    name: prometheus
+    state: started
+    enabled: true
+    daemon_reload: true
+- name: enable port 9090 for prometheus
+  ansible.posix.firewalld:
+    port: 9090/tcp
+    state: enabled
+    permanent: true
+    immediate: true
+  when: firewalld_enabled
+- name: cleanup /tmp/prometheus
+  file:
+    path: /tmp/prometheus
+    state: absent
