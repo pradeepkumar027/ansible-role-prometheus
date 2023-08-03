@@ -1,4 +1,5 @@
 galaxy_info:
+  role_name: prometheus
   author: Pradeep Kumar
   description: prometheus role for linux
   company: your company (optional)
